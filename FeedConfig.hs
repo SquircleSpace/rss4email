@@ -22,22 +22,24 @@ import Utils
 
 data Config = Config
   { configFeedConfigs :: Map Text FeedConfig
-  , configToEmail :: Text
-  , configSMTPServer :: Text
-  , configSMTPUsername :: Text
-  , configSMTPPasswordCommand :: Maybe [Text]
+  , configFromAddress :: Text
   , configSMTPPasswordFile :: Maybe Text
   , configSMTPPassword :: Maybe Text
+  , configSMTPServerPort :: Maybe Integer
+  , configSMTPServer :: Text
+  , configSMTPUsername :: Text
+  , configToEmail :: Text
   } deriving (Show)
 
 exampleConfig = Config
   { configFeedConfigs = Map.empty
-  , configToEmail = "cool-person@example.com"
-  , configSMTPServer = "smtp.example.com"
-  , configSMTPUsername = "username"
-  , configSMTPPasswordCommand = Nothing
+  , configFromAddress = "rss4email@example.com"
   , configSMTPPasswordFile = Just "/var/lib/rss4email/smtpPassword"
   , configSMTPPassword = Nothing
+  , configSMTPServerPort = Just 25
+  , configSMTPServer = "smtp.example.com"
+  , configSMTPUsername = "username"
+  , configToEmail = "cool-person@example.com"
   }
 
 data FeedConfig = FeedConfig

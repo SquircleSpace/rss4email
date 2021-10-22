@@ -7,6 +7,8 @@ let
     optparse-applicative
     filepath
     aeson-pretty
+    smtp-mail
+    cryptohash-sha256
   ]);
 in
 stdenv.mkDerivation rec {

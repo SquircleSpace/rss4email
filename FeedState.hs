@@ -16,6 +16,7 @@ module FeedState
   , mergeFeedStates
   , diffFeedStates
   , ageOutEntriesFromFeedState
+  , getItemHash
   ) where
 
 import Data.ByteString as BSS
@@ -27,20 +28,26 @@ import Control.Monad
 import Data.Maybe
 import Data.Map as Map
 import Data.Text
+import Data.Text.Encoding
 import Text.Feed.Types
 import Text.Feed.Query
 import Data.Time.Clock
 import Data.Time.Format
+import qualified Crypto.Hash.SHA256 as SHA
+import qualified Data.ByteString.Base64 as B64
 
 import THUtils
 import Utils
+import MailJSON
 
 data State = State
   { feedStates :: Map Text FeedState
+  , outbox :: [MailJSON]
   } deriving (Show)
 
 emptyState = State
   { feedStates = Map.empty
+  , outbox = []
   }
 
 parseStateL :: BSL.ByteString -> Either String State
@@ -183,4 +190,19 @@ setFeedSeenLinks map fs = fs { feedSeenLinks = map }
 setFeedSeenHashes map fs = fs { feedSeenHashes = map }
 
 getItemGuid item = snd <$> getItemId item
-getItemHash item = undefined -- Just "abc"
+
+hashGetters =
+  [ getItemLink
+  , getItemTitle
+  , getItemDescription
+  ]
+
+getItemHash item =
+  case strings of
+    [] -> Nothing
+    l -> Just $ decodeUtf8 $ B64.encode $ SHA.finalize $ SHA.updates SHA.init byteStrings
+  where
+    byteStrings = Prelude.map encodeUtf8 strings
+    strings = do
+      getter <- hashGetters
+      maybeToList $ getter item

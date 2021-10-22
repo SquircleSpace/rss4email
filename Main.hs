@@ -27,6 +27,8 @@ import FeedState
 import FeedConfig
 import Utils
 import AppMonad
+import Email
+import MailJSON
 
 data GlobalArguments = GlobalArguments
   { configPath :: FilePath
@@ -46,6 +48,8 @@ mainRun :: GlobalArguments -> AppMonad ()
 mainRun arguments = do
   config <- loadConfig $ configPath arguments
   state <- loadState $ statePath arguments
+  forM_ (outbox state) $ \(MailJSON mail) -> do
+    sendEmail config mail
   results <- forM (Map.toAscList $ configFeedConfigs config) $ \(key, feedConfig) -> do
     let feedState = fromMaybe emptyFeedState $ Map.lookup key (feedStates state)
     (newItems, newState) <- catchError (getNew feedConfig feedState) $ \error -> do
@@ -53,10 +57,14 @@ mainRun arguments = do
       return ([], feedState)
     return ((key, newState), map (\item -> (key, feedConfig, item)) newItems)
   let newStateMap = Map.fromAscList $ map fst results
-  let newState = state { feedStates = newStateMap }
   let newItems = concat $ map snd results
-  liftIO $ putStrLn $ show newItems
+  now <- liftIO getCurrentTime
+  let mails = mapMaybe (\(key, feedConfig, item) -> mailForItem config now key feedConfig item) newItems
+  let newState = state { feedStates = newStateMap, outbox = map MailJSON mails }
   liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState
+  forM_ mails $ \mail -> do
+    sendEmail config mail
+  liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState { outbox = [] }
 
 initCommand :: Parser (GlobalArguments -> AppMonad ())
 initCommand = do
