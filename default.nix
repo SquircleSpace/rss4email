@@ -9,6 +9,7 @@ let
     aeson-pretty
     smtp-mail
     cryptohash-sha256
+    atomic-write
   ]);
 in
 stdenv.mkDerivation rec {

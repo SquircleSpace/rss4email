@@ -11,6 +11,7 @@ import Text.Feed.Query
 import Text.Feed.Types
 import qualified Data.ByteString as BSS
 import qualified Data.ByteString.Lazy as BSL
+import qualified System.AtomicWrite.Writer.LazyByteString as ABSL
 import System.IO
 import Network.HTTP.Req
 import Options.Applicative
@@ -82,13 +83,13 @@ mainRun arguments = do
         { feedStates = newStateMap
         , outbox = (map MailJSON newMail) ++ leftoverMail
         }
-  liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState
+  liftIO $ ABSL.atomicWriteFile (statePath arguments) $ serializeState newState
 
   failedMail <- fmap MailJSON <$> bulkSendEmail config newMail
 
   -- Now write out the state containing just the mail we failed to
   -- send!
-  liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState { outbox = failedMail ++ leftoverMail }
+  liftIO $ ABSL.atomicWriteFile (statePath arguments) $ serializeState newState { outbox = failedMail ++ leftoverMail }
 
 initCommand :: Parser (GlobalArguments -> AppMonad ())
 initCommand = do
@@ -104,8 +105,8 @@ mainInit overwrite arguments = do
     when configExists $ throwError $ (configPath arguments) ++ " already exists"
     stateExists <- liftIO $ doesFileExist $ statePath arguments
     when configExists $ throwError $ (statePath arguments) ++ " already exists"
-  liftIO $ BSL.writeFile (configPath arguments) $ serializeConfig exampleConfig
-  liftIO $ BSL.writeFile (statePath arguments) $ serializeState emptyState
+  liftIO $ ABSL.atomicWriteFile (configPath arguments) $ serializeConfig exampleConfig
+  liftIO $ ABSL.atomicWriteFile (statePath arguments) $ serializeState emptyState
   liftIO $ putStrLn $ "Awesome!  Now go edit " ++ configPath arguments ++ " and add some feeds!"
 
 allCommands :: Parser (GlobalArguments -> AppMonad ())
