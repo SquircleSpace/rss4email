@@ -21,6 +21,7 @@ import Control.Exception
 import qualified Data.Map as Map
 import System.IO.Error
 import System.Exit
+import Network.Mail.Mime (Mail)
 
 import ReadFeed
 import FeedState
@@ -44,27 +45,50 @@ globalArgumentParser defaultDir = do
 runCommand :: Parser (GlobalArguments -> AppMonad ())
 runCommand = pure $ mainRun
 
+bulkSendEmail :: Config -> [Mail] -> AppMonad [Mail]
+bulkSendEmail config mailList = do
+  leftoverMail <- forM mailList $ \mail -> do
+    catchError (sendEmail config mail >> return Nothing) $ \error -> do
+      liftIO $ hPutStrLn stderr error
+      return $ Just mail
+  return $ catMaybes leftoverMail
+
 mainRun :: GlobalArguments -> AppMonad ()
 mainRun arguments = do
   config <- loadConfig $ configPath arguments
   state <- loadState $ statePath arguments
-  forM_ (outbox state) $ \(MailJSON mail) -> do
-    sendEmail config mail
+
+  -- Try to drain the outbox from last time.  Maybe we'll have better
+  -- luck this time.
+  let unsentMail = fmap unMailJSON $ outbox state
+  leftoverMail <- fmap MailJSON <$> bulkSendEmail config unsentMail
+
   results <- forM (Map.toAscList $ configFeedConfigs config) $ \(key, feedConfig) -> do
     let feedState = fromMaybe emptyFeedState $ Map.lookup key (feedStates state)
     (newItems, newState) <- catchError (getNew feedConfig feedState) $ \error -> do
       liftIO $ hPutStrLn stderr error
       return ([], feedState)
     return ((key, newState), map (\item -> (key, feedConfig, item)) newItems)
+
   let newStateMap = Map.fromAscList $ map fst results
   let newItems = concat $ map snd results
+
   now <- liftIO getCurrentTime
-  let mails = mapMaybe (\(key, feedConfig, item) -> mailForItem config now key feedConfig item) newItems
-  let newState = state { feedStates = newStateMap, outbox = map MailJSON mails }
+  let newMail = mapMaybe (\(key, feedConfig, item) -> mailForItem config now key feedConfig item) newItems
+
+  -- Journal the mails we intend to send so we can recover from a
+  -- crash
+  let newState = state
+        { feedStates = newStateMap
+        , outbox = (map MailJSON newMail) ++ leftoverMail
+        }
   liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState
-  forM_ mails $ \mail -> do
-    sendEmail config mail
-  liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState { outbox = [] }
+
+  failedMail <- fmap MailJSON <$> bulkSendEmail config newMail
+
+  -- Now write out the state containing just the mail we failed to
+  -- send!
+  liftIO $ BSL.writeFile (statePath arguments) $ serializeState newState { outbox = failedMail ++ leftoverMail }
 
 initCommand :: Parser (GlobalArguments -> AppMonad ())
 initCommand = do
