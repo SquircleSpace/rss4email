@@ -21,7 +21,7 @@ import THUtils
 import Utils
 
 data Config = Config
-  { configFeedConfigs :: Map Text FeedConfig
+  { configFeeds :: Map Text FeedConfig
   , configFromAddress :: Text
   , configSMTPPasswordFile :: Maybe Text
   , configSMTPPassword :: Maybe Text
@@ -32,7 +32,7 @@ data Config = Config
   } deriving (Show)
 
 exampleConfig = Config
-  { configFeedConfigs = Map.empty
+  { configFeeds = Map.empty
   , configFromAddress = "rss4email@example.com"
   , configSMTPPasswordFile = Just "/var/lib/rss4email/smtpPassword"
   , configSMTPPassword = Nothing

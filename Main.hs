@@ -64,7 +64,7 @@ mainRun arguments = do
   let unsentMail = fmap unMailJSON $ outbox state
   leftoverMail <- fmap MailJSON <$> bulkSendEmail config unsentMail
 
-  results <- forM (Map.toAscList $ configFeedConfigs config) $ \(key, feedConfig) -> do
+  results <- forM (Map.toAscList $ configFeeds config) $ \(key, feedConfig) -> do
     let feedState = fromMaybe emptyFeedState $ Map.lookup key (feedStates state)
     (newItems, newState) <- catchError (getNew feedConfig feedState) $ \error -> do
       liftIO $ hPutStrLn stderr error

@@ -1,4 +1,6 @@
-{ stdenv, haskellPackages, ... }:
+{ stdenv, haskellPackages,
+  src
+}:
 let
   ghc = haskellPackages.ghcWithPackages (pkgs: with pkgs; [
     feed
@@ -15,7 +17,7 @@ in
 stdenv.mkDerivation rec {
   name = "rss4email-${version}";
   version = "1.0.0";
-  src = ./.;
+  inherit src;
   buildInputs = [ ghc ];
   buildPhase = ''
     ${ghc}/bin/ghc -o rss4email Main.hs
