@@ -100,7 +100,11 @@ in
         createHome = false;
         home = "/var/empty";
         isSystemUser = true;
+        group = cfg.user;
       };
+    };
+    users.groups = mkIf cfg.enable {
+      "${cfg.user}" = {};
     };
 
     systemd.services.rss4email = mkIf cfg.enable {
