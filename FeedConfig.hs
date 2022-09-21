@@ -48,8 +48,8 @@ data FeedConfig = FeedConfig
   , feedToEmail :: Maybe Text
   } deriving (Show)
 
-$(deriveJSON jsonOptions { fieldLabelModifier = dropCamelLower 1 } ''Config)
 $(deriveJSON jsonOptions { fieldLabelModifier = dropCamelLower 1 } ''FeedConfig)
+$(deriveJSON jsonOptions { fieldLabelModifier = dropCamelLower 1 } ''Config)
 
 parseConfigL :: BSL.ByteString -> Either String Config
 parseConfigL = eitherDecode'

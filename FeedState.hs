@@ -45,20 +45,6 @@ data State = State
   , outbox :: [MailJSON]
   } deriving (Show)
 
-emptyState = State
-  { feedStates = Map.empty
-  , outbox = []
-  }
-
-parseStateL :: BSL.ByteString -> Either String State
-parseStateL = eitherDecode'
-
-parseStateS :: BSS.ByteString -> Either String State
-parseStateS = eitherDecode' . BSL.fromStrict
-
-serializeState :: State -> BSL.ByteString
-serializeState = encodePretty
-
 newtype Date = Date { unDate :: UTCTime }
   deriving (Show, Eq, Ord)
 
@@ -79,14 +65,28 @@ data FeedState = FeedState
   , feedSeenHashes :: SeenMap
   } deriving (Show)
 
+$(deriveJSON jsonOptions { fieldLabelModifier = dropCamelLower 1 } ''FeedState)
+$(deriveJSON jsonOptions ''State)
+
+emptyState = State
+  { feedStates = Map.empty
+  , outbox = []
+  }
+
+parseStateL :: BSL.ByteString -> Either String State
+parseStateL = eitherDecode'
+
+parseStateS :: BSS.ByteString -> Either String State
+parseStateS = eitherDecode' . BSL.fromStrict
+
+serializeState :: State -> BSL.ByteString
+serializeState = encodePretty
+
 emptyFeedState = FeedState
   { feedSeenGuids = Map.empty
   , feedSeenLinks = Map.empty
   , feedSeenHashes = Map.empty
   }
-
-$(deriveJSON jsonOptions ''State)
-$(deriveJSON jsonOptions { fieldLabelModifier = dropCamelLower 1 } ''FeedState)
 
 data MeldFunctions = MeldFunctions
   { meldSeenGuids :: Map Text Date -> Map Text Date -> Map Text Date
